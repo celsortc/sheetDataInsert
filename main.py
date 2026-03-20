@@ -11,9 +11,9 @@ ordem = [
     "vazio",
     "nome",
     "CPF",
-    "ano/curso",
     "hr-entrada-saida",
     "carga-horaria",
+    "ano/curso",
     "supervisor",  # agora aparece depois da carga horaria
     "telefone"
 ]
@@ -34,46 +34,50 @@ else:
     ws.title = "Estags"
     ws.append(ordem)
 
+# função que vai formatar o nome, permitir que capitalize o nome com excecão de palavras como de, do, dos..
+def formatar_nome(nome):
+    if not nome:
+        return nome
+
+    palavras_minusculas = {"da", "de", "do", "das", "dos"}
+
+    palavras = nome.lower().split()
+    resultado = []
+
+    for i, palavra in enumerate(palavras):
+        if palavra in palavras_minusculas and i != 0:
+            resultado.append(palavra)
+        else:
+            resultado.append(palavra.capitalize())
+
+    return " ".join(resultado)
+
+def formatar_numeros(num):
+    if not num:
+        return num
+    
+    num = re.sub(r'\D', '', num)
+    
+    return int(num)
+
+def pegar_numero(nome_arquivo):
+    numero = nome_arquivo.split(' - ')[0]
+    return numero
+
+dados = {}
+
 for arquivo in arquivos:
     print("Processando:", arquivo)
 
     caminho_pdf = os.path.join(pasta, arquivo)
 
+    nc = pegar_numero(arquivo)
+    dados["vazio"] = nc
+
     with pdfplumber.open(caminho_pdf) as pdf:
         texto = ""
         for pagina in pdf.pages:
             texto += pagina.extract_text() + "\n"
-
-
-
-
-    # função que vai formatar o nome, permitir que capitalize o nome com excecão de palavras como de, do, dos..
-    def formatar_nome(nome):
-        if not nome:
-            return nome
-
-        palavras_minusculas = {"da", "de", "do", "das", "dos"}
-
-        palavras = nome.lower().split()
-        resultado = []
-
-        for i, palavra in enumerate(palavras):
-            if palavra in palavras_minusculas and i != 0:
-                resultado.append(palavra)
-            else:
-                resultado.append(palavra.capitalize())
-
-        return " ".join(resultado)
-
-    def formatar_numeros(cpf):
-        if not cpf:
-            return cpf
-        
-        return re.sub(r'\D', '', cpf)
-
-    def pegar_numero(nome_arquivo):
-        numero = nome_arquivo.split(' - ')[0]
-        return numero
 
 
 
@@ -87,7 +91,7 @@ for arquivo in arquivos:
         
     }
 
-    dados = {}
+    
 
     for campo, padrao in padroes.items():
         match = re.search(padrao, texto, re.IGNORECASE)
@@ -112,13 +116,12 @@ for arquivo in arquivos:
         # dados["horario-entrada"] = entrada
         # dados["horario-saida"] = saida
         dados["hr-entrada-saida"] = entrada + " - " + saida
-        print(entrada + "-"+saida)
 
         entrada_dt = datetime.strptime(entrada, "%H:%M")
         saida_dt = datetime.strptime(saida, "%H:%M")
 
         carga = (saida_dt - entrada_dt).total_seconds() / 3600
-        dados["carga-horaria"] = f"{carga:.0f}"
+        dados["carga-horaria"] = int(carga)
 
     fones = re.findall(r"Fone:\s*([^\n]+)", texto)
 
@@ -131,10 +134,12 @@ for arquivo in arquivos:
 
     if dados.get("nome"):
         dados["nome"] = formatar_nome(dados["nome"])
-    if dados.get("CPF"):
+
+    if dados.get("CPF") and dados.get("telefone") and dados.get("ano/curso"):
         dados["CPF"] = formatar_numeros(dados["CPF"])
-    if dados.get("telefone"):
         dados["telefone"] = formatar_numeros(dados["telefone"])
+        dados["ano/curso"] = formatar_numeros(dados["ano/curso"])
+
 
 
 
@@ -142,10 +147,10 @@ for arquivo in arquivos:
     ws.append(linha)
 
 
-    for campo in ordem:
-        print(campo, "->", dados.get(campo))
+    # for campo in ordem:
+    #     print(campo, "->", dados.get(campo))
 
-arquivo_excel = "estag.xlsx"
+arquivo_excel = "estags.xlsx"
 wb.save(arquivo_excel)
 
 
