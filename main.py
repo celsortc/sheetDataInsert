@@ -4,7 +4,13 @@ from datetime import datetime
 from openpyxl import Workbook, load_workbook
 import os
 import tkinter as tk
-from tkinter import messagebox
+from tkinter import messagebox, filedialog, Tk
+
+def escolher_pasta():
+    root = Tk()
+    root.withdraw()
+    pasta = filedialog.askdirectory(title="Selecione a pasta com PDFs")
+    return pasta
 
 def processar_pdfs():
     print('Processando PDFs...')
@@ -22,11 +28,15 @@ def processar_pdfs():
     ]
 
     # Define a pasta que será aberta e lista os pdfs
-    pasta = "pdfs" 
+    pasta = escolher_pasta()
+
+    if not pasta:
+        raise Exception("Nenhuma pasta selecionada.") 
 
     arquivos = [f for f in os.listdir(pasta) if f.endswith(".pdf")]
 
-    arquivo = "estags.xlsx"
+    arquivo = os.path.join(pasta, "estags.xlsx")
+    print('arquivo aq: ',arquivo)
 
     if os.path.exists(arquivo):
         wb = load_workbook(arquivo)
@@ -149,10 +159,49 @@ def processar_pdfs():
         linha = [dados.get(campo) for campo in ordem]
         ws.append(linha)
 
-    arquivo_excel = "estags.xlsx"
+    arquivo_excel = os.path.join(pasta, "estags.xlsx")
     wb.save(arquivo_excel)
 
+def limpar_excel():
+    pastaLimpar = escolher_pasta()
+
+    if not pastaLimpar:
+        messagebox.showwarning("Aviso", "Escolha uma pasta primeiro!")
+        return
+
+    arquivo = os.path.join(pastaLimpar, "estags.xlsx")
+
+    if not os.path.exists(arquivo):
+        messagebox.showinfo("Info", "Nenhum arquivo Excel encontrado.")
+        return
+
+    # recria o arquivo do zero
+    wb = Workbook()
+    ws = wb.active
+    ws.title = "Estags"
+
+    # seu cabeçalho
+    ws.append([
+        "data-inicial",
+        "data-final",
+        "vazio",
+        "nome",
+        "CPF",
+        "hr-entrada-saida",
+        "carga-horaria",
+        "ano/curso",
+        "supervisor",
+        "telefone"
+    ])
+
+    wb.save(arquivo)
+
+    messagebox.showinfo("Sucesso", "Dados apagados com sucesso!")
+
+
+
 def clicar_botao():
+    messagebox.showinfo("Atenção", "Selecione a pasta com os PDFs!")
     try:
         processar_pdfs()
         messagebox.showinfo("Sucesso", "PDFs processados com sucesso!")
@@ -163,6 +212,8 @@ janela = tk.Tk()
 janela.title("Automação de Estagiários")
 janela.geometry("300x150")
 
+
+
 botao = tk.Button(
     janela,
     text="Processar PDFs",
@@ -170,10 +221,16 @@ botao = tk.Button(
     height=2,
     width=20
 )
+botao_limpar = tk.Button(
+    janela,
+    text="Limpar Excel",
+    command=limpar_excel,
+    height=2,
+    width=20
+)
+
+botao_limpar.pack(pady=10)
 botao.pack(pady=30)
 
 janela.mainloop()
-
-
-
 
